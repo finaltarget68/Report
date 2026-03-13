@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Report Generator - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hover-scale {
+            transition: transform 0.2s ease;
+        }
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-ATM text-2xl"></i>
+                    <h1 class="text-2xl font-bold">ATM District Report Generator</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm" id="currentDateTime"></span>
+                    <button onclick="showATMList()" 
+                            class="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 transition">
+                        <i class="fas fa-list"></i> List of ATMs
+                    </button>
+                    <button onclick="refreshData()" class="bg-white text-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total ATMs</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalAtms">-</p>
+                    </div>
+                    <i class="fas fa-ATM text-3xl text-blue-500"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">ATMs with Errors</p>
+                        <p class="text-2xl font-bold text-red-600" id="atmsWithErrors">-</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Active Categories</p>
+                        <p class="text-2xl font-bold text-orange-600" id="activeCategories">-</p>
+                    </div>
+                    <i class="fas fa-list text-3xl text-orange-500"></i>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Reports Generated</p>
+                        <p class="text-2xl font-bold text-green-600" id="reportsCount">-</p>
+                    </div>
+                    <i class="fas fa-file-alt text-3xl text-green-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Error Categories Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-t-lg">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Error Categories Section
+                        </h2>
+                    </div>
+                    
+                    <div class="p-4">
+                        <!-- Search Section -->
+                        <div class="mb-4">
+                            <div class="relative">
+                                <input type="text" id="atmSearch" placeholder="Search ATMs..." 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+                            <div id="searchResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 hidden max-h-60 overflow-y-auto"></div>
+                        </div>
+
+                        <!-- Error Categories -->
+                        <div id="errorCategories" class="space-y-4">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-t-lg">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-file-alt mr-2"></i>
+                            Reports Section
+                        </h2>
+                    </div>
+                    
+                    <div class="p-4 space-y-3">
+                        <button onclick="generatePDFReport()" 
+                                class="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition flex items-center justify-center">
+                            <i class="fas fa-file-pdf mr-2"></i>
+                            Export as PDF
+                        </button>
+                        
+                        <button onclick="generateWordReport()" 
+                                class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                            <i class="fas fa-file-word mr-2"></i>
+                            Export as Word
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-4 mt-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">© 2024 Bank District Office - ATM Report Generator System</p>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p class="mt-4 text-gray-700">Processing...</p>
+        </div>
+    </div>
+
+    <!-- ATM List Modal -->
+    <div id="atmListModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-y-auto w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Complete ATM List</h3>
+                <button onclick="closeATMList()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <input type="text" id="atmListSearch" placeholder="Search ATMs..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                       onkeyup="filterATMList(this.value)">
+            </div>
+            <div id="atmListContent" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- ATM list will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Category ATM Management Modal -->
+    <div id="categoryATMModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-6xl max-h-[80vh] overflow-y-auto w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-xl font-bold">Manage ATMs for <span id="categoryName">Category</span></h3>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Select ATMs to add to this category. ATMs already in the category show with a checkmark.
+                    </p>
+                </div>
+                <button onclick="closeCategoryATMModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4 flex justify-between items-center">
+                <div class="flex-1 mr-4">
+                    <input type="text" id="categoryATMSearch" placeholder="Search ATMs..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                           onkeyup="filterCategoryATMList(this.value)">
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="selectedCount" class="text-sm font-medium text-gray-700">0 ATMs selected</span>
+                    <button onclick="addSelectedATMsToCurrentCategory()" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+                        <i class="fas fa-plus mr-2"></i>Add Selected ATMs
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full border-collapse border border-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-900">Action</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-900">Terminal ID</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-900">Branch Name</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-900">ATM Name</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoryATMTableBody">
+                        <!-- ATM rows will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Storage - Exact replica of Flask database structure
+        let atmData = {
+            atms: [],
+            categories: [],
+            errors: [],
+            reports: []
+        };
+
+        // Global variables for modal management
+        let currentCategoryId = null;
+        let allATMs = [];
+        let currentErrors = {};
+
+        // Real ATM data from Flask database
+        atmData.atms = [
+            { terminal_id: 'ADD00005', branch_name: 'DD MAIN', atm_name: 'SAMRAT HOTEL FOREX ATM' },
+            { terminal_id: 'ADD00007', branch_name: 'ODA BULTUM', atm_name: 'ODA BULTUM BRANCH 1' },
+            { terminal_id: 'ADD00009', branch_name: 'MECHARA', atm_name: 'MECHARA BRANCH ATM 1' },
+            { terminal_id: 'ADD00010', branch_name: 'HIRNA', atm_name: 'HIRNA BRANCH ATM 1' },
+            { terminal_id: 'ADD00013', branch_name: 'HAFETESSA', atm_name: 'HAFETE ESSEA BRANCH ATM 1' },
+            { terminal_id: 'ADD00015', branch_name: 'AWEDAY', atm_name: 'AWEDAY BRANCH ATM 1' },
+            { terminal_id: 'ADD00016', branch_name: 'KARAMILLEE', atm_name: 'KARAMILLE BRANCH ATM 1' },
+            { terminal_id: 'ADD00020', branch_name: 'BEDESSA', atm_name: 'BEDESSA BRANCH ATM 1' },
+            { terminal_id: 'ADD00021', branch_name: 'DEDER', atm_name: 'DEDER BRANCH ATM 1' },
+            { terminal_id: 'ADD00022', branch_name: 'CHELENKO', atm_name: 'CHELENKO BRANCH ATM 1' },
+            { terminal_id: 'ADD00023', branch_name: 'AFRENKELO', atm_name: 'AFRAN KELO BRANCH ATM 1' },
+            { terminal_id: 'ADD00024', branch_name: 'DD MAIN', atm_name: 'DIRE DAWA AIRPORT FOREX ATM' },
+            { terminal_id: 'ADD00025', branch_name: 'CHEMIN DEFER', atm_name: 'CHEMIN DEFER BRANCH ATM 1' },
+            { terminal_id: 'ADD00026', branch_name: 'HARAWACHA', atm_name: 'HAREWACHA BRANCH ATM 1' },
+            { terminal_id: 'ADD00027', branch_name: 'MESSELA', atm_name: 'MESSELA BRANCH ATM 1' },
+            { terminal_id: 'ADD00029', branch_name: 'KURFACHELE', atm_name: 'KURFACHELE BRANCH ATM 1' },
+            { terminal_id: 'ADD00034', branch_name: 'ASEBOT', atm_name: 'ASEBOT BRANCH ATM 1' },
+            { terminal_id: 'ADD00035', branch_name: 'KULUBI', atm_name: 'KULUBI BRANCH ATM 1' },
+            { terminal_id: 'ADD00037', branch_name: 'DOBA', atm_name: 'DOBA BRANCH ATM 1' },
+            { terminal_id: 'ADD00039', branch_name: 'GARA JELLO', atm_name: 'JELLO BRANCH ATM 1' },
+            { terminal_id: 'ADD00040', branch_name: 'HARAMAYA', atm_name: 'HARAMAYA BRANCH ATM 1' },
+            { terminal_id: 'ADD00041', branch_name: 'HAFETESSA', atm_name: 'HAFETE ESSEA BRANCH ATM 2' },
+            { terminal_id: 'ADD00043', branch_name: 'SABIAN', atm_name: 'SABIAN BRANCH ATM 1' },
+            { terminal_id: 'ADD00044', branch_name: 'LEGEODA', atm_name: 'LEGEODA BRANCH ATM 1' },
+            { terminal_id: 'ADD00045', branch_name: 'FINKILE', atm_name: 'FINKILE BRANCH ATM 1' },
+            { terminal_id: 'ADD00049', branch_name: 'GRAWA', atm_name: 'GRAWA BRANCH ATM 1' },
+            { terminal_id: 'ADD00051', branch_name: 'CHIRO', atm_name: 'CHIRO BRANCH ATM 2' },
+            { terminal_id: 'ADD00052', branch_name: 'GENDEKORE', atm_name: 'GENDEKORE BRANCH ATM 1' },
+            { terminal_id: 'ADD00053', branch_name: 'DD MAIN', atm_name: 'DIREDAWA TRANSPORT OFFICE' },
+            { terminal_id: 'ADD00054', branch_name: 'SABIAN', atm_name: 'SABIAN BRANCH ATM 4' },
+            { terminal_id: 'ADD00055', branch_name: 'SABIAN', atm_name: 'SIESTA HOTEL ATM' },
+            { terminal_id: 'ADD00056', branch_name: 'GREEK CAMP', atm_name: 'GREEK CAMP BRANCH ATM 1' },
+            { terminal_id: 'ADD00057', branch_name: 'BOREDA', atm_name: 'BOREDA BRANCH ATM 1' },
+            { terminal_id: 'ADD00061', branch_name: 'LEGEGEBA', atm_name: 'LEGE GEBA BRANCH ATM 1' },
+            { terminal_id: 'ADD00062', branch_name: 'FERES MEGALA', atm_name: 'FERES MEGALA BRANCH ATM 1' },
+            { terminal_id: 'ADD00064', branch_name: 'DECHATU', atm_name: 'DECHATU BRANCH ATM 1' },
+            { terminal_id: 'ADD00065', branch_name: 'BEDENO', atm_name: 'BEDENO BRANCH ATM 1' },
+            { terminal_id: 'ADD00072', branch_name: 'MEGALLA', atm_name: 'MEGALA BRANCH ATM 1' },
+            { terminal_id: 'ADD00073', branch_name: 'SITTY', atm_name: 'CITTY BRANCH ATM 1' },
+            { terminal_id: 'ADD00074', branch_name: 'DECHATU', atm_name: 'DECHATU BRANCH ATM 2' },
+            { terminal_id: 'ADD00076', branch_name: 'DD MAIN', atm_name: 'DIREDAWA DAWA UNIVERSITY ATM 01' },
+            { terminal_id: 'ADD00077', branch_name: 'DD MAIN', atm_name: 'DIREDAWA MUNICIPALITY ATM' },
+            { terminal_id: 'ADD00078', branch_name: 'HARAMAYA', atm_name: 'HARAMAYA UNIVERSITY ATM 1' },
+            { terminal_id: 'ADD00080', branch_name: 'SABIAN', atm_name: 'SABIAN BRANCH ATM 2' },
+            { terminal_id: 'ADD00081', branch_name: 'DD MAIN', atm_name: 'DIRE DAWA BRANCH ATM 2' },
+            { terminal_id: 'ADD00082', branch_name: 'HARAMAYA', atm_name: 'HARAMAYA BRANCH ATM 2' },
+            { terminal_id: 'ADD00083', branch_name: 'MEISSO', atm_name: 'MEISSO BRANCH ATM 1' },
+            { terminal_id: 'ADD00086', branch_name: 'Megala', atm_name: 'RAS HOTEL ATM' },
+            { terminal_id: 'ADD00089', branch_name: 'ODA BULTUM', atm_name: 'ODA BULTUM UNIVERSITY ATM' },
+            { terminal_id: 'ADD00090', branch_name: 'CONEL', atm_name: 'CONEL BRANCH ATM 1' },
+            { terminal_id: 'ADD00092', branch_name: 'GEMECHIS', atm_name: 'GEMECHIS BRANCH ATM 1' },
+            { terminal_id: 'ADD00093', branch_name: 'BOKE TIKO', atm_name: 'BOKE TIKO BRANCH ATM 1' },
+            { terminal_id: 'ADD00100', branch_name: 'WELTESIS', atm_name: 'WELTASIS BRANCH ATM 1' },
+            { terminal_id: 'ADD00102', branch_name: 'DD MAIN', atm_name: 'Sabian hospital ATM 1' },
+            { terminal_id: 'ADD00104', branch_name: 'GELEMSO', atm_name: 'GELEMSO BRANCH ATM 1' },
+            { terminal_id: 'ADD00106', branch_name: 'DEBESSO', atm_name: 'DEBESSO BRANCH ATM 1' },
+            { terminal_id: 'ADD00108', branch_name: 'FINKILE', atm_name: 'FINKILE BRANCH ATM 2' },
+            { terminal_id: 'ADD00111', branch_name: 'HARAMAYA', atm_name: 'HARMAYA UNIVERSTIY ATM 2' },
+            { terminal_id: 'ADD00112', branch_name: 'HAROCHERCHER', atm_name: 'HAROCHERCHER BRANCH ATM 1' },
+            { terminal_id: 'ADD00114', branch_name: 'JAJA', atm_name: 'JAJA BRANCH ATM 1' },
+            { terminal_id: 'ADD00116', branch_name: 'KEMONA', atm_name: 'KEMONA BRANCH ATM 1' },
+            { terminal_id: 'ADD00117', branch_name: 'LEGEODA', atm_name: 'LEGEODA BRANCH ATM 2' },
+            { terminal_id: 'ADD00118', branch_name: 'MICHETA', atm_name: 'MICHETA BRANCH ATM 1' },
+            { terminal_id: 'ADD00119', branch_name: 'SABIAN', atm_name: 'SABIAN BRANCH ATM 3' },
+            { terminal_id: 'ADD00121', branch_name: 'WETTER', atm_name: 'WETTER BRANCH ATM 1' },
+            { terminal_id: 'ADD00125', branch_name: 'MADEYA', atm_name: 'MADEYA BRANCH ATM 1' },
+            { terminal_id: 'ADD00126', branch_name: 'MADEYA', atm_name: 'MADEYA BRANCH ATM 2' },
+            { terminal_id: 'ADD00127', branch_name: 'MEGALLA', atm_name: 'MEGALA BRANCH ATM 2' },
+            { terminal_id: 'ADD00128', branch_name: 'ODA BULTUM', atm_name: 'ODA BULTUM BRANCH ATM 2' },
+            { terminal_id: 'ADD00129', branch_name: 'SITTY', atm_name: 'SITTI BRANCH ATM 2' },
+            { terminal_id: 'ADD00130', branch_name: 'SABIAN', atm_name: 'MM HOTEL ATM' },
+            { terminal_id: 'ADD00131', branch_name: 'GREEK CAMP', atm_name: 'GREEK CAMP BRANCH ATM 2' },
+            { terminal_id: 'ADD00133', branch_name: 'MELKAJEBDU', atm_name: 'MELKAJEBU BRANCH ATM 1' },
+            { terminal_id: 'ADD00134', branch_name: 'HARAMAYA', atm_name: 'HARMAYA UNIVERSITY ATM 3' },
+            { terminal_id: 'ADD00135', branch_name: 'DD MAIN', atm_name: 'DIREDAWA UNIVERSITY ATM ATM 02' },
+            { terminal_id: 'ADD00138', branch_name: 'AYISHA', atm_name: 'AYESHA BRANCH ATM 1' },
+            { terminal_id: 'ADD00142', branch_name: 'CHELENKO', atm_name: 'CHELENKO BRANCH OUTLET ATM' },
+            { terminal_id: 'ADD00144', branch_name: 'DEDER', atm_name: 'DEDER BRANCH ATM 2' },
+            { terminal_id: 'ADD00146', branch_name: 'BIFTU ADUGNA', atm_name: 'BIFTU ADUGNA BRANCH ATM 1' },
+            { terminal_id: 'ADD00148', branch_name: 'HARAMAYA', atm_name: 'HAROMAYA BRANCH ATM 3' },
+            { terminal_id: 'ADD00154', branch_name: 'KEFIRA', atm_name: 'KEFIRA BRANCH ATM 2' },
+            { terminal_id: 'ADD00155', branch_name: 'BEDESSA', atm_name: 'BEDESSA BRANCH OUTLET ATM' },
+            { terminal_id: 'ADD00156', branch_name: 'TULO', atm_name: 'TULO BRANCH ATM 1' },
+            { terminal_id: 'ADD00159', branch_name: 'CHEMIN DEFER', atm_name: 'CHEMIN DEFER BRANCH ATM 2' },
+            { terminal_id: 'ADD00160', branch_name: 'CHIRO SIRE', atm_name: 'CHIRO SIRE BRANCH ATM 1' },
+            { terminal_id: 'ADD00166', branch_name: 'BABUREHAMAN', atm_name: 'BABU REHAMAN BRANCH ATM 1' },
+            { terminal_id: 'ADD00167', branch_name: 'DECHATU', atm_name: 'DECHATU BRANCH OUTLET ATM' },
+            { terminal_id: 'ADD00170', branch_name: 'HIRNA', atm_name: 'HIRNA BRANCH ATM 2' },
+            { terminal_id: 'ADD00171', branch_name: 'BORENA BARENTU', atm_name: 'BORENA BARENTU BRANCH ATM 1' },
+            { terminal_id: 'ADD00172', branch_name: 'ANCHAR', atm_name: 'ANCHAR BRANCH ATM 1' },
+            { terminal_id: 'ADD00173', branch_name: 'GELEMSO', atm_name: 'GELEMSO BRANCH OUTLET ATM' },
+            { terminal_id: 'ADD00177', branch_name: 'DD MAIN', atm_name: 'HURSO MILITARY TRAINING CENTER' },
+            { terminal_id: 'ADD00180', branch_name: 'MECHARA', atm_name: 'MECHARA BRANCH ATM 2' },
+            { terminal_id: 'ADD00181', branch_name: 'GOLAODA', atm_name: 'GOLAODA BRANCH ATM 1' },
+            { terminal_id: 'ADD00182', branch_name: 'MEGALLA', atm_name: 'BLOOSOM HOTEL ATM' },
+            { terminal_id: 'ADD00184', branch_name: 'GOROMUTI', atm_name: 'GOROMUTI BRANCH ATM 1' },
+            { terminal_id: 'ADD00185', branch_name: 'DD INDUSTRY PARK', atm_name: 'DIRE DAWA INDUSTRY PARK BRANCH' },
+            { terminal_id: 'ADD00186', branch_name: 'CHIRO', atm_name: 'WEST HARERGE FINANCE OFFICE' },
+            { terminal_id: 'ADD00188', branch_name: 'HAYAT', atm_name: 'HAYAT BRANCH ATM' },
+            { terminal_id: 'ADD00189', branch_name: 'DD MAIN', atm_name: 'DIRE DAWA TRANSPORT OFFICE' },
+            { terminal_id: 'ADD00191', branch_name: 'HABIB', atm_name: 'HABIB BRANCH ATM' },
+            { terminal_id: 'ADD00192', branch_name: 'DARUL ULUM', atm_name: 'DARUL-ULUM BRANCH ATM' },
+            { terminal_id: 'ADD00195', branch_name: 'JAMEL AL-NUR', atm_name: 'JAME\'L AL NUR BRANCH ATM' },
+            { terminal_id: 'ADD00196', branch_name: 'HAFETESSA', atm_name: 'HAFETESSA BRANCH ATM 3' },
+            { terminal_id: 'ADD00197', branch_name: 'MARWA', atm_name: 'MARWA BRANCH ATM 1' },
+            { terminal_id: 'ADD00198', branch_name: 'DD MAIN', atm_name: 'DIRE DAWA MAIN ATM' },
+            { terminal_id: 'ADD00199', branch_name: 'SABIAN', atm_name: 'DIRE DAWA MERET LIMAT ATM' },
+            { terminal_id: 'ADD00201', branch_name: 'BABUREHAMAN', atm_name: 'AL-HILAL HOTEL ATM' },
+            { terminal_id: 'ADD00202', branch_name: 'BABUREHAMAN', atm_name: 'B-CAPITAL HOTEL ATM' },
+            { terminal_id: 'ADD00203', branch_name: 'Dire Dawa', atm_name: 'Dire dawa Main Recycler' },
+            { terminal_id: 'ADD00204', branch_name: 'Dire Dawa', atm_name: 'Sabian recycler' },
+            { terminal_id: 'ADD00205', branch_name: 'Darulum Branch', atm_name: 'Darulum Branch atm2' },
+            { terminal_id: 'ADD00207', branch_name: 'Shemendefer Branch', atm_name: 'Sheref Hotel' },
+            { terminal_id: 'ADD00208', branch_name: 'Feruz Branch', atm_name: 'Feruz ATM' },
+            { terminal_id: 'ADD00209', branch_name: 'Dire Dawa Branch', atm_name: 'Dire Dawa Main Branch' },
+            { terminal_id: 'ADD00210', branch_name: 'CONEL', atm_name: 'CONEL BRANCH' },
+            { terminal_id: 'ADD00211', branch_name: 'LUQMAN', atm_name: 'LUQMAN BRANCH' },
+            { terminal_id: 'ADD00212', branch_name: 'Dire Dawa Main', atm_name: 'Dire Dawa Main Branch' }
+        ];
+
+        // Exact categories from Flask database
+        atmData.categories = [
+            { id: 1, name: 'Lost Communication', color: 'red' },
+            { id: 2, name: 'Hard Fault', color: 'orange' },
+            { id: 3, name: 'Cash Out', color: 'yellow' },
+            { id: 4, name: 'Supervisor', color: 'blue' },
+            { id: 5, name: 'Switch / Host Lost Communication', color: 'purple' },
+            { id: 6, name: 'Out Of Service', color: 'gray' }
+        ];
+
+        // Initialize empty errors and reports
+        atmData.errors = [];
+        atmData.reports = [];
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('atmReportData', JSON.stringify(atmData));
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const storedData = localStorage.getItem('atmReportData');
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                atmData.errors = parsedData.errors || [];
+                atmData.reports = parsedData.reports || [];
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            updateStats();
+            loadCategories();
+            updateDateTime();
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalAtms = atmData.atms.length;
+            const atmsWithErrors = atmData.errors.length;
+            const activeCategories = atmData.categories.filter(cat => 
+                atmData.errors.some(error => error.category_id === cat.id)
+            ).length;
+            const reportsCount = atmData.reports.length;
+
+            document.getElementById('totalAtms').textContent = totalAtms;
+            document.getElementById('atmsWithErrors').textContent = atmsWithErrors;
+            document.getElementById('activeCategories').textContent = activeCategories;
+            document.getElementById('reportsCount').textContent = reportsCount;
+        }
+
+        // Load categories - exact replica of Flask functionality
+        function loadCategories() {
+            const container = document.getElementById('errorCategories');
+            container.innerHTML = '';
+
+            atmData.categories.forEach(category => {
+                const categoryErrors = atmData.errors.filter(error => error.category_id === category.id);
+                
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'border border-gray-200 rounded-lg p-4 hover:shadow-md transition';
+                
+                categoryDiv.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-lg text-gray-800 flex items-center">
+                            <i class="fas fa-exclamation-triangle text-${getCategoryColor(category.id)}-500 mr-2"></i>
+                            ${category.name}
+                            <span class="ml-2 bg-${getCategoryColor(category.id)}-100 text-${getCategoryColor(category.id)}-800 text-xs px-2 py-1 rounded-full">
+                                ${categoryErrors.length} ATMs
+                            </span>
+                        </h3>
+                        <button onclick="showATMListForCategory(${category.id})" 
+                                class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition text-sm">
+                            <i class="fas fa-plus"></i> Add ATMs
+                        </button>
+                    </div>
+                    
+                    <div id="category-${category.id}-atms" class="space-y-2">
+                        ${categoryErrors.length > 0 ? categoryErrors.map(error => `
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                <div class="flex items-center flex-1">
+                                    <select onchange="updateATMReason('${error.terminal_id}', this.value)" 
+                                            class="text-sm border border-gray-300 rounded px-2 py-1 mr-2">
+                                        <option value="">Select Reason...</option>
+                                        <option value="Moti case" ${error.reason === 'Moti case' ? 'selected' : ''}>Moti case</option>
+                                        <option value="Network problem" ${error.reason === 'Network problem' ? 'selected' : ''}>Network problem</option>
+                                        <option value="Branch Follow up problem" ${error.reason === 'Branch Follow up problem' ? 'selected' : ''}>Branch Follow up problem</option>
+                                        <option value="2nd remainder" ${error.reason === '2nd remainder' ? 'selected' : ''}>2nd remainder</option>
+                                        <option value="3rd remainder" ${error.reason === '3rd remainder' ? 'selected' : ''}>3rd remainder</option>
+                                        <option value="4th remainder" ${error.reason === '4th remainder' ? 'selected' : ''}>4th remainder</option>
+                                        <option value="Aptra Problem" ${error.reason === 'Aptra Problem' ? 'selected' : ''}>Aptra Problem</option>
+                                        <option value="Corridor" ${error.reason === 'Corridor' ? 'selected' : ''}>Corridor</option>
+                                        <option value="Cash Shortage" ${error.reason === 'Cash Shortage' ? 'selected' : ''}>Cash Shortage</option>
+                                        <option value="Power problem" ${error.reason === 'Power problem' ? 'selected' : ''}>Power problem</option>
+                                    </select>
+                                    <input type="datetime-local" 
+                                           id="start-datetime-${error.terminal_id}" 
+                                           value="${error.start_datetime || ''}"
+                                           class="text-sm border border-gray-300 rounded px-2 py-1 mr-2"
+                                           placeholder="Start datetime">
+                                    <button onclick="updateATMStartDateTime('${error.terminal_id}')" 
+                                            class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition text-xs">
+                                        <i class="fas fa-clock"></i> Starting From
+                                    </button>
+                                    <span class="text-sm">
+                                        <strong>${error.terminal_id}</strong> – ${getATMBranchName(error.terminal_id)} <span class="text-gray-600">(${getATMName(error.terminal_id)})</span>
+                                    </span>
+                                </div>
+                                <button onclick="removeATMFromCategory('${error.terminal_id}')" 
+                                        class="text-red-500 hover:text-red-700 transition ml-2">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `).join('') : '<p class="text-gray-400 text-sm italic">No ATMs in this category</p>'}
+                    </div>
+                `;
+                
+                container.appendChild(categoryDiv);
+            });
+        }
+
+        // Helper functions to get ATM data
+        function getATMBranchName(terminalId) {
+            const atm = atmData.atms.find(a => a.terminal_id === terminalId);
+            return atm ? atm.branch_name : 'Unknown';
+        }
+
+        function getATMName(terminalId) {
+            const atm = atmData.atms.find(a => a.terminal_id === terminalId);
+            return atm ? atm.atm_name : 'Unknown';
+        }
+
+        function getCategoryColor(categoryId) {
+            const colors = ['red', 'orange', 'yellow', 'blue', 'purple'];
+            return colors[categoryId - 1] || 'gray';
+        }
+
+        // Show ATM list for category - exact replica of Flask functionality
+        function showATMListForCategory(categoryId) {
+            currentCategoryId = categoryId;
+            
+            // Show the category ATM management modal
+            showCategoryATMModal();
+        }
+
+        function showCategoryATMModal() {
+            // Find category name
+            const category = atmData.categories.find(cat => cat.id === currentCategoryId);
+            document.getElementById('categoryName').textContent = category ? category.name : 'Category';
+            
+            // Load ATMs if not already loaded
+            if (allATMs.length === 0) {
+                loadATMsForCategory();
+            } else {
+                // Render ATMs with checkboxes for this category
+                renderCategoryATMList(allATMs);
+                document.getElementById('categoryATMModal').classList.remove('hidden');
+            }
+        }
+
+        function loadATMsForCategory() {
+            showLoading();
+            try {
+                // Simulate API call with local data
+                allATMs = atmData.atms;
+                
+                // Render ATMs with checkboxes for this category
+                renderCategoryATMList(allATMs);
+                document.getElementById('categoryATMModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading ATMs:', error);
+                showNotification('Error loading ATM list', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function closeCategoryATMModal() {
+            document.getElementById('categoryATMModal').classList.add('hidden');
+            currentCategoryId = null;
+        }
+
+        function renderCategoryATMList(atms) {
+            const tbody = document.getElementById('categoryATMTableBody');
+            tbody.innerHTML = '';
+            
+            atms.forEach(atm => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                // Check if this ATM is in the current category
+                const isInCurrentCategory = atmData.errors.some(error => 
+                    error.category_id === currentCategoryId && error.terminal_id === atm.terminal_id
+                );
+                
+                if (isInCurrentCategory) {
+                    // Show checkmark for ATMs already in category
+                    row.innerHTML = `
+                        <td class="border border-gray-200 px-4 py-2">
+                            <button onclick="removeATMFromCategory('${atm.terminal_id}')" 
+                                    class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition font-bold">
+                                ✓
+                            </button>
+                        </td>
+                        <td class="border border-gray-200 px-4 py-2 font-medium">${atm.terminal_id}</td>
+                        <td class="border border-gray-200 px-4 py-2">${atm.branch_name}</td>
+                        <td class="border border-gray-200 px-4 py-2">${atm.atm_name}</td>
+                    `;
+                } else {
+                    // Show checkbox for ATMs not in category
+                    row.innerHTML = `
+                        <td class="border border-gray-200 px-4 py-2">
+                            <input type="checkbox" 
+                                   class="atm-checkbox" 
+                                   data-terminal-id="${atm.terminal_id}" 
+                                   data-branch="${atm.branch_name}" 
+                                   data-atm-name="${atm.atm_name}"
+                                   onchange="updateSelectedCount()">
+                        </td>
+                        <td class="border border-gray-200 px-4 py-2 font-medium">${atm.terminal_id}</td>
+                        <td class="border border-gray-200 px-4 py-2">${atm.branch_name}</td>
+                        <td class="border border-gray-200 px-4 py-2">${atm.atm_name}</td>
+                    `;
+                }
+                tbody.appendChild(row);
+            });
+            
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const selectedCheckboxes = document.querySelectorAll('.atm-checkbox:checked:not(:disabled)');
+            document.getElementById('selectedCount').textContent = `${selectedCheckboxes.length} ATMs selected`;
+        }
+
+        function addSelectedATMsToCurrentCategory() {
+            if (!currentCategoryId) {
+                showNotification('Please select an error category first', 'error');
+                return;
+            }
+
+            const selectedCheckboxes = document.querySelectorAll('.atm-checkbox:checked:not(:disabled)');
+            
+            if (selectedCheckboxes.length === 0) {
+                showNotification('Please select at least one ATM to add', 'error');
+                return;
+            }
+
+            showLoading();
+            try {
+                const addedATMs = [];
+                
+                selectedCheckboxes.forEach(checkbox => {
+                    const terminalId = checkbox.dataset.terminalId;
+                    const branchName = checkbox.dataset.branch;
+                    const atmName = checkbox.dataset.atmName;
+                    
+                    // Remove from other categories first (like Flask does)
+                    atmData.errors = atmData.errors.filter(error => error.terminal_id !== terminalId);
+                    
+                    // Add to new category
+                    atmData.errors.push({
+                        terminal_id: terminalId,
+                        category_id: currentCategoryId,
+                        reason: '',
+                        start_datetime: '',
+                        report_date: new Date().toISOString().split('T')[0]
+                    });
+                    
+                    addedATMs.push(`${terminalId} - ${branchName}`);
+                });
+
+                saveData();
+                updateUI();
+                closeCategoryATMModal();
+                showNotification(`Successfully added ${selectedCheckboxes.length} ATMs to category`, 'success');
+                
+            } catch (error) {
+                console.error('Error adding ATMs:', error);
+                showNotification('Error adding ATMs to category', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filterCategoryATMList(searchTerm) {
+            const filteredATMs = allATMs.filter(atm => 
+                atm.terminal_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                atm.branch_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                atm.atm_name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            renderCategoryATMList(filteredATMs);
+        }
+
+        // Update functions - exact replicas of Flask API endpoints
+        function updateATMReason(terminalId, reason) {
+            const error = atmData.errors.find(e => e.terminal_id === terminalId);
+            if (error) {
+                error.reason = reason;
+                saveData();
+                showNotification(`Reason updated for ${terminalId}`, 'success');
+            }
+        }
+
+        function updateATMStartDateTime(terminalId) {
+            const datetimeInput = document.getElementById(`start-datetime-${terminalId}`);
+            const error = atmData.errors.find(e => e.terminal_id === terminalId);
+            if (error && datetimeInput.value) {
+                error.start_datetime = datetimeInput.value;
+                saveData();
+                showNotification(`Start datetime updated for ${terminalId}`, 'success');
+            }
+        }
+
+        function removeATMFromCategory(terminalId) {
+            if (confirm(`Remove ${terminalId} from this category?`)) {
+                atmData.errors = atmData.errors.filter(e => e.terminal_id !== terminalId);
+                saveData();
+                updateUI();
+                showNotification(`ATM ${terminalId} removed`, 'success');
+            }
+        }
+
+        // Report generation functions - exact replicas of Flask report format
+        function generatePDFReport() {
+            showLoading();
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Get today's date for daily numbering
+                const today_date = new Date().toISOString().split('T')[0];
+                const today_reports = atmData.reports.filter(r => r.report_date === today_date && r.report_type === 'PDF').length;
+                const daily_number = today_reports + 1;
+                
+                // Title - exact Flask format
+                doc.setFontSize(18);
+                doc.text('ATM DISTRICT STATUS REPORT', 105, 20, { align: 'center' });
+                
+                // Date and Time - exact Flask format
+                const current_date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                const current_time = new Date().toLocaleTimeString('en-US', { hour12: true });
+                doc.setFontSize(12);
+                doc.text(`Date: ${current_date} | Time: ${current_time} | Report #${daily_number}`, 105, 30, { align: 'center' });
+                
+                // Errors by category - exact Flask formatting
+                let yPosition = 50;
+                let has_errors = false;
+                
+                atmData.categories.forEach(category => {
+                    const categoryErrors = atmData.errors.filter(e => e.category_id === category.id);
+                    
+                    if (categoryErrors.length > 0) {
+                        has_errors = true;
+                        
+                        // Category heading in purple - exact Flask format
+                        doc.setFontSize(12);
+                        doc.setTextColor(128, 0, 128); // Purple color
+                        doc.text(category.name, 20, yPosition);
+                        yPosition += 8;
+                        
+                        // Numbered ATM list with colors - exact Flask format
+                        categoryErrors.forEach((error, index) => {
+                            const atm = atmData.atms.find(a => a.terminal_id === error.terminal_id);
+                            
+                            // Format start datetime properly
+                            let start_datetime_text = "";
+                            if (error.start_datetime && error.start_datetime.trim()) {
+                                try {
+                                    const dt_obj = new Date(error.start_datetime);
+                                    const formatted_dt = dt_obj.toLocaleString('en-US', { 
+                                        year: 'numeric', 
+                                        month: '2-digit', 
+                                        day: '2-digit', 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                    }).replace(',', '');
+                                    start_datetime_text = ` (Started: ${formatted_dt})`;
+                                } catch {
+                                    start_datetime_text = ` (Started: ${error.start_datetime})`;
+                                }
+                            }
+                            
+                            if (error.reason) {
+                                // Red ATM info, Blue reason - exact Flask format
+                                doc.setTextColor(255, 0, 0); // Red for ATM info
+                                doc.setFontSize(9);
+                                const atmText = `${index + 1}. ${error.terminal_id} - ${atm ? atm.branch_name : 'Unknown'} - ${atm ? atm.atm_name : 'Unknown'}${start_datetime_text} ----- `;
+                                doc.text(atmText, 35, yPosition);
+                                
+                                // Calculate position for blue reason text
+                                const textWidth = doc.getTextWidth(atmText);
+                                doc.setTextColor(0, 0, 255); // Blue for reason
+                                doc.text(error.reason, 35 + textWidth, yPosition);
+                            } else {
+                                // No reason - just red ATM info
+                                doc.setTextColor(255, 0, 0); // Red color
+                                doc.setFontSize(9);
+                                doc.text(`${index + 1}. ${error.terminal_id} - ${atm ? atm.branch_name : 'Unknown'} - ${atm ? atm.atm_name : 'Unknown'}${start_datetime_text}`, 35, yPosition);
+                            }
+                            
+                            yPosition += 7;
+                        });
+                        
+                        yPosition += 6; // Space between categories
+                    }
+                });
+                
+                if (!has_errors) {
+                    doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text('No ATM errors reported.', 20, yPosition);
+                }
+                
+                // Save report history
+                atmData.reports.push({
+                    report_type: 'PDF',
+                    report_date: today_date,
+                    generated_at: new Date().toISOString()
+                });
+                saveData();
+                
+                // Save the PDF
+                doc.save(`ATM_Report_${new Date().toISOString().split('T')[0].replace(/-/g, '')}_${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.pdf`);
+                showNotification('PDF report generated successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error generating PDF report:', error);
+                showNotification('Error generating PDF report', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function generateWordReport() {
+            showLoading();
+            try {
+                // Get today's date for daily numbering
+                const today_date = new Date().toISOString().split('T')[0];
+                const today_reports = atmData.reports.filter(r => r.report_date === 'Word' && r.report_date === today_date).length;
+                const daily_number = today_reports + 1;
+                
+                // Create report content - exact Flask format
+                let reportContent = 'ATM DISTRICT STATUS REPORT\n\n';
+                
+                // Date and Time - exact Flask format
+                const current_date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                const current_time = new Date().toLocaleTimeString('en-US', { hour12: true });
+                reportContent += `Date: ${current_date} | Time: ${current_time} | Report #${daily_number}\n\n`;
+                
+                // Errors by category - exact Flask formatting
+                let has_errors = false;
+                
+                atmData.categories.forEach(category => {
+                    const categoryErrors = atmData.errors.filter(e => e.category_id === category.id);
+                    
+                    if (categoryErrors.length > 0) {
+                        has_errors = true;
+                        
+                        // Category heading
+                        reportContent += `${category.name}\n`;
+                        
+                        // Numbered ATM list
+                        categoryErrors.forEach((error, index) => {
+                            const atm = atmData.atms.find(a => a.terminal_id === error.terminal_id);
+                            
+                            // Format start datetime properly
+                            let start_datetime_text = "";
+                            if (error.start_datetime && error.start_datetime.trim()) {
+                                try {
+                                    const dt_obj = new Date(error.start_datetime);
+                                    const formatted_dt = dt_obj.toLocaleString('en-US', { 
+                                        year: 'numeric', 
+                                        month: '2-digit', 
+                                        day: '2-digit', 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                    }).replace(',', '');
+                                    start_datetime_text = ` (Started: ${formatted_dt})`;
+                                } catch {
+                                    start_datetime_text = ` (Started: ${error.start_datetime})`;
+                                }
+                            }
+                            
+                            if (error.reason) {
+                                reportContent += `${index + 1}. ${error.terminal_id} - ${atm ? atm.branch_name : 'Unknown'} - ${atm ? atm.atm_name : 'Unknown'}${start_datetime_text} ----- ${error.reason}\n`;
+                            } else {
+                                reportContent += `${index + 1}. ${error.terminal_id} - ${atm ? atm.branch_name : 'Unknown'} - ${atm ? atm.atm_name : 'Unknown'}${start_datetime_text}\n`;
+                            }
+                        });
+                        
+                        reportContent += '\n'; // Space between categories
+                    }
+                });
+                
+                if (!has_errors) {
+                    reportContent += 'No ATM errors reported.\n';
+                }
+                
+                // Save report history
+                atmData.reports.push({
+                    report_type: 'Word',
+                    report_date: today_date,
+                    generated_at: new Date().toISOString()
+                });
+                saveData();
+                
+                // Create and download the file
+                const blob = new Blob([reportContent], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ATM_Report_${new Date().toISOString().split('T')[0].replace(/-/g, '')}_${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.docx`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                showNotification('Word report generated successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error generating Word report:', error);
+                showNotification('Error generating Word report', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Utility functions
+        function showATMList() {
+            document.getElementById('atmListModal').classList.remove('hidden');
+            loadATMList();
+        }
+
+        function closeATMList() {
+            document.getElementById('atmListModal').classList.add('hidden');
+        }
+
+        function loadATMList() {
+            const container = document.getElementById('atmListContent');
+            container.innerHTML = atmData.atms.map(atm => `
+                <div class="border rounded p-3">
+                    <div class="font-medium">${atm.terminal_id}</div>
+                    <div class="text-sm text-gray-600">${atm.branch_name}</div>
+                    <div class="text-sm text-gray-500">${atm.atm_name}</div>
+                </div>
+            `).join('');
+        }
+
+        function filterATMList(searchTerm) {
+            const filteredATMs = atmData.atms.filter(atm => 
+                atm.terminal_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                atm.branch_name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            
+            const container = document.getElementById('atmListContent');
+            container.innerHTML = filteredATMs.map(atm => `
+                <div class="border rounded p-3">
+                    <div class="font-medium">${atm.terminal_id}</div>
+                    <div class="text-sm text-gray-600">${atm.branch_name}</div>
+                    <div class="text-sm text-gray-500">${atm.atm_name}</div>
+                </div>
+            `).join('');
+        }
+
+        function refreshData() {
+            updateUI();
+            showNotification('Data refreshed successfully', 'success');
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 fade-in ${
+                type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
+            } text-white`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'success' ? 'fa-check-circle' : 
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'warning' ? 'fa-exclamation-triangle' : 
+                        'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            const dateTimeStr = now.toLocaleDateString('en-US', options);
+            document.getElementById('currentDateTime').textContent = dateTimeStr;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateUI();
+            updateDateTime();
+            setInterval(updateDateTime, 60000);
+        });
+    </script>
+</body>
+</html>
